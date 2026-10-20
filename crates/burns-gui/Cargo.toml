@@ -1,0 +1,21 @@
+[package]
+name = "burns-gui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Native burns workbench: one still image, a live GPU preview, depth maps, and MP4/PNG export"
+
+[[bin]]
+name = "burns-gui"
+path = "src/main.rs"
+
+[dependencies]
+burns.workspace = true
+burns-depth = { workspace = true, features = ["native"] }
+burns-media.workspace = true
+# AccessKit exposes the controls to platform accessibility APIs; clipboard enables copy and
+# paste in text fields.
+eframe = { workspace = true, features = ["accesskit", "clipboard"] }
+egui-wgpu.workspace = true
+rfd.workspace = true

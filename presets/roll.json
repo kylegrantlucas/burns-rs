@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "output": {
+    "width": 1920,
+    "height": 1080
+  },
+  "timeline": {
+    "fps": {
+      "num": 30,
+      "den": 1
+    },
+    "frames": 240
+  },
+  "seed": 0,
+  "camera": {
+    "type": "transform",
+    "start": {
+      "zoom": 1.06,
+      "x": 0.5,
+      "y": 0.5,
+      "roll_degrees": -1.5
+    },
+    "end": {
+      "zoom": 1.06,
+      "x": 0.5,
+      "y": 0.5,
+      "roll_degrees": 1.5
+    },
+    "easing": "cosine"
+  },
+  "depth": {
+    "invert": false
+  },
+  "shake": {
+    "enabled": false,
+    "profile": "shake",
+    "amount": 1.0,
+    "speed": 1.0
+  },
+  "warp": {
+    "type": "ripple",
+    "enabled": false,
+    "amplitude": 0.006,
+    "wavelength": 0.18,
+    "center": [
+      0.5,
+      0.5
+    ],
+    "cycles": 2
+  }
+}

@@ -1,0 +1,26 @@
+[package]
+name = "burns-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Headless burns frontend: presets, schema, MP4 clips, PNG frames, and depth maps"
+
+[[bin]]
+name = "burns"
+path = "src/main.rs"
+
+[dependencies]
+burns.workspace = true
+burns-depth = { workspace = true, features = ["native"] }
+burns-media.workspace = true
+clap.workspace = true
+ctrlc.workspace = true
+pollster.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+png.workspace = true
+tempfile.workspace = true

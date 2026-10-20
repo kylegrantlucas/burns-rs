@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
+    <title>burns motion workbench</title>
+  </head>
+  <body>
+    <div class="app" id="app">
+      <header class="masthead">
+        <h1 class="wordmark">burns</h1>
+        <p class="source-info" id="source-info">No image open</p>
+        <p class="gpu-info" id="gpu-info" role="status" aria-live="polite">Starting WebGPU…</p>
+      </header>
+
+      <section class="stage" id="stage" aria-label="Preview">
+        <canvas id="preview" class="preview" aria-label="Rendered preview" hidden></canvas>
+
+        <div class="stage-empty" id="stage-empty">
+          <button type="button" class="button button-primary button-large" id="open-image-stage">Open image</button>
+          <p>Or drop one PNG, JPEG or WebP still here. It stays on this computer.</p>
+          <p class="stage-error" id="stage-gpu-error" hidden></p>
+        </div>
+
+        <div class="stage-message" id="stage-message" hidden>
+          <p id="stage-message-text"></p>
+        </div>
+
+        <p class="stage-notice" id="stage-notice" hidden></p>
+        <p class="stage-legend" id="stage-legend" hidden></p>
+        <div class="drop-hint" id="drop-hint" hidden><p>Drop one image to open it</p></div>
+      </section>
+
+      <section class="transport" aria-label="Transport">
+        <div class="scrub-row">
+          <label class="visually-hidden" for="scrub">Frame</label>
+          <input type="range" id="scrub" class="scrub" min="0" max="239" step="1" value="0" disabled />
+        </div>
+        <div class="transport-row">
+          <div class="transport-buttons" role="group" aria-label="Playback">
+            <button type="button" class="icon-button" id="first-frame" aria-label="First frame" disabled>
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2h2v12H3zM14 2v12L6 8z" /></svg>
+            </button>
+            <button type="button" class="icon-button" id="prev-frame" aria-label="Previous frame" disabled>
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11 2h2v12h-2zM10 2v12L3 8z" /></svg>
+            </button>
+            <button type="button" class="button button-play" id="play" aria-keyshortcuts="Space" disabled>
+              <svg viewBox="0 0 16 16" aria-hidden="true" class="icon-play"><path d="M4 2v12l10-6z" /></svg>
+              <svg viewBox="0 0 16 16" aria-hidden="true" class="icon-pause"><path d="M3 2h4v12H3zM9 2h4v12H9z" /></svg>
+              <span id="play-label">Play</span>
+            </button>
+            <button type="button" class="icon-button" id="next-frame" aria-label="Next frame" disabled>
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2h2v12H3zM6 2v12l7-6z" /></svg>
+            </button>
+            <button type="button" class="icon-button" id="last-frame" aria-label="Last frame" disabled>
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 2v12l8-6zM11 2h2v12h-2z" /></svg>
+            </button>
+            <button type="button" class="button toggle" id="repeat" aria-pressed="true">Repeat</button>
+          </div>
+          <dl class="readouts">
+            <div><dt>Frame</dt><dd id="readout-frame">0 / 239</dd></div>
+            <div><dt>Time</dt><dd id="readout-time">0.000 s / 8.000 s</dd></div>
+            <div><dt>Rate</dt><dd id="readout-fps">30/1 fps</dd></div>
+          </dl>
+          <fieldset class="view-switch" id="view-switch">
+            <legend class="visually-hidden">Preview view</legend>
+            <label><input type="radio" name="view" value="motion" checked /> <span>Motion</span></label>
+            <label><input type="radio" name="view" value="source" /> <span>Source</span></label>
+            <label><input type="radio" name="view" value="depth" disabled /> <span>Depth</span></label>
+          </fieldset>
+        </div>
+      </section>
+
+      <section class="export" aria-labelledby="export-heading">
+        <h2 id="export-heading" class="section-heading">Export</h2>
+        <div class="export-actions">
+          <button type="button" class="button button-primary" id="export-mp4" disabled>Export MP4</button>
+          <button type="button" class="button" id="cancel-export" hidden>Cancel export</button>
+          <button type="button" class="button" id="save-png" disabled>Save frame PNG</button>
+          <button type="button" class="button" id="download-project">Download project</button>
+          <button type="button" class="button" id="import-project">Import project…</button>
+          <button type="button" class="button" id="download-depth" disabled>Download depth map</button>
+        </div>
+        <div class="export-progress" id="export-progress" hidden>
+          <progress id="export-progress-bar" max="1" value="0" aria-labelledby="export-progress-text"></progress>
+          <p id="export-progress-text"></p>
+        </div>
+        <p class="export-status" id="export-status"></p>
+        <p class="export-result" id="export-result" role="status" aria-live="polite"></p>
+        <p class="error" id="export-error" role="alert" hidden></p>
+        <p class="help" id="depth-download-help" hidden>The depth map downloads raw, never inverted; the project carries the inversion setting. Keep project.json and depth.png together to reproduce this clip with the command line.</p>
+        <details class="cli" id="cli">
+          <summary>Command line</summary>
+          <p class="help">Download the project and the depth map next to the image, then run this from that folder. The project carries depth inversion; the depth map stays raw.</p>
+          <div class="cli-row">
+            <code id="cli-command"></code>
+            <button type="button" class="button" id="copy-cli">Copy</button>
+          </div>
+          <p class="help" id="cli-status" role="status" aria-live="polite"></p>
+        </details>
+      </section>
+
+      <aside class="inspector" aria-label="Inspector">
+        <section class="panel" aria-labelledby="image-heading">
+          <h2 id="image-heading" class="section-heading">Image and depth</h2>
+          <div class="button-row">
+            <button type="button" class="button" id="open-image">Open image…</button>
+          </div>
+          <p class="error" id="image-error" role="alert" hidden></p>
+
+          <h3 class="subheading">Depth map</h3>
+          <p class="help" id="depth-state">Open an image first.</p>
+          <div class="button-row">
+            <button type="button" class="button" id="load-depth" disabled>Load map…</button>
+            <button type="button" class="button" id="generate-depth" disabled>Generate</button>
+            <button type="button" class="button" id="cancel-depth" hidden>Cancel</button>
+          </div>
+          <div class="depth-progress" id="depth-progress" hidden>
+            <progress id="depth-progress-bar" aria-labelledby="depth-progress-text"></progress>
+            <p id="depth-progress-text"></p>
+          </div>
+          <p class="error" id="depth-error" role="alert" hidden></p>
+          <p class="warning" id="depth-warning" role="status" hidden></p>
+          <p class="help" id="model-note"></p>
+        </section>
+
+        <section class="panel" aria-labelledby="preset-heading">
+          <h2 id="preset-heading" class="section-heading">Preset</h2>
+          <div class="field">
+            <label for="preset-select">Built-in preset</label>
+            <div class="inline-pair">
+              <select id="preset-select"></select>
+              <button type="button" class="button" id="apply-preset">Apply</button>
+            </div>
+            <p class="help">Replaces camera, shake and warp. Output, timing, seed and depth inversion stay.</p>
+            <p class="error" id="preset-error" role="alert" hidden></p>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="timing-heading" id="timing-panel">
+          <h2 id="timing-heading" class="section-heading">Output and timing</h2>
+          <div class="field-grid">
+            <div class="field">
+              <label for="output-width">Width <span class="unit">px</span></label>
+              <input type="number" id="output-width" inputmode="numeric" min="1" step="1" />
+            </div>
+            <div class="field">
+              <label for="output-height">Height <span class="unit">px</span></label>
+              <input type="number" id="output-height" inputmode="numeric" min="1" step="1" />
+            </div>
+          </div>
+          <p class="error" id="output-error" role="alert" hidden></p>
+          <div class="field-grid">
+            <div class="field">
+              <label for="fps">Frame rate <span class="unit">fps</span></label>
+              <input type="text" id="fps" inputmode="text" autocomplete="off" spellcheck="false" aria-describedby="fps-help" />
+            </div>
+            <div class="field">
+              <label for="duration">Duration <span class="unit">s</span></label>
+              <input type="number" id="duration" inputmode="decimal" min="0" step="any" />
+            </div>
+          </div>
+          <p class="help" id="fps-help">Whole number or ratio, such as 30, 24000/1001 or 30000/1001. Changing the rate keeps the duration.</p>
+          <p class="help" id="timing-summary"></p>
+          <p class="error" id="timing-error" role="alert" hidden></p>
+        </section>
+
+        <div id="settings"></div>
+
+        <section class="panel notices" aria-labelledby="notices-heading">
+          <h2 id="notices-heading" class="section-heading">Notices</h2>
+          <p class="help">Images, depth maps and exports never leave this browser. The only network requests are this app's files and, after you choose Generate, the public depth model.</p>
+          <ul class="notice-list">
+            <li><a href="notices/B612-OFL.txt">B612 typeface</a>, SIL Open Font License 1.1</li>
+            <li><a href="notices/onnxruntime-web-MIT.txt">ONNX Runtime Web 1.30.0</a>, MIT License</li>
+            <li><a href="notices/mediabunny-MPL-2.0.txt">Mediabunny 1.61.6</a>, Mozilla Public License 2.0; unmodified source at <a href="https://github.com/Vanilagy/mediabunny/tree/v1.61.6">github.com/Vanilagy/mediabunny</a></li>
+            <li id="model-license"></li>
+          </ul>
+        </section>
+      </aside>
+    </div>
+
+    <input type="file" id="image-file" accept="image/png,image/jpeg,image/webp" hidden />
+    <input type="file" id="depth-file" accept="image/png" hidden />
+    <input type="file" id="project-file" accept="application/json,.json" hidden />
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

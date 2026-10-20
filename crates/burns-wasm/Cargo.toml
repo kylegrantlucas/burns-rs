@@ -1,0 +1,22 @@
+[package]
+name = "burns-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "WebAssembly bindings: portable burns projects, Rust asset decoding, and the shared WebGPU renderer on a canvas"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+burns = { path = "../burns" }
+burns-depth = { path = "../burns-depth", default-features = false }
+wgpu.workspace = true
+wasm-bindgen.workspace = true
+wasm-bindgen-futures.workspace = true
+js-sys.workspace = true
+web-sys.workspace = true
+serde_json.workspace = true
+serde.workspace = true

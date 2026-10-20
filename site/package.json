@@ -1,0 +1,29 @@
+{
+  "name": "burns-site",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "packageManager": "pnpm@12.9.0",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "copy-assets": "node scripts/copy-runtime-assets.mjs",
+    "predev": "node scripts/copy-runtime-assets.mjs",
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "prebuild": "node scripts/copy-runtime-assets.mjs",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fontsource/b612": "5.3.0",
+    "mediabunny": "1.61.6",
+    "onnxruntime-web": "1.30.0"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vite": "8.3.4"
+  }
+}

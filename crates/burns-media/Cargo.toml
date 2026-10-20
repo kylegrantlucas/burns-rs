@@ -1,0 +1,17 @@
+[package]
+name = "burns-media"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Native burns media I/O: asset loading, no-clobber output publishing, PNG frames, and FFmpeg MP4 export"
+
+[dependencies]
+burns.workspace = true
+pollster.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+png.workspace = true
+serde_json.workspace = true

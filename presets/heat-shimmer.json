@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "output": {
+    "width": 1920,
+    "height": 1080
+  },
+  "timeline": {
+    "fps": {
+      "num": 30,
+      "den": 1
+    },
+    "frames": 240
+  },
+  "seed": 0,
+  "camera": {
+    "type": "still",
+    "view": {
+      "zoom": 1.04,
+      "x": 0.5,
+      "y": 0.5,
+      "roll_degrees": 0.0
+    }
+  },
+  "depth": {
+    "invert": false
+  },
+  "shake": {
+    "enabled": false,
+    "profile": "shake",
+    "amount": 1.0,
+    "speed": 1.0
+  },
+  "warp": {
+    "type": "heat-shimmer",
+    "enabled": true,
+    "amplitude": 0.003,
+    "spatial_scale": 1.0,
+    "cycles": 2
+  }
+}

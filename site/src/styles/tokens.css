@@ -1,0 +1,55 @@
+/*
+ * Motion-rostrum workbench tokens.
+ * The image sits on a true-black matte; the instrument panel around it is cool
+ * grey. Accent marks focus and active state, the playhead colour marks the
+ * current frame and errors. B612 is self-hosted from @fontsource/b612.
+ */
+:root {
+  /* Colour */
+  --color-panel: #e3e8ee;
+  --color-surface: #f8fafc;
+  --color-ink: #203344;
+  --color-muted: #506679;
+  --color-accent: #216788;
+  --color-focus: #216788;
+  --color-playhead: #ac3c53;
+  --color-error: #ac3c53;
+  --color-matte: #000000;
+  --color-on-matte: #f8fafc;
+  --color-on-matte-muted: #b9c6d3;
+  --color-rule: #c3ccd6;
+  --color-on-accent: #f8fafc;
+
+  /* Type */
+  --font-family: 'B612', system-ui, sans-serif;
+  --font-wordmark: 700 1.875rem/1 var(--font-family); /* 30px */
+  --font-section: 700 1.125rem/1.3 var(--font-family); /* 18px */
+  --font-control: 400 0.9375rem/1.35 var(--font-family); /* 15px */
+  --font-control-strong: 700 0.9375rem/1.35 var(--font-family);
+  --font-small: 400 0.875rem/1.4 var(--font-family); /* 14px */
+  --font-readout: 700 1rem/1.2 var(--font-family); /* 16px */
+
+  /* Space */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+
+  /* Shape */
+  --radius-control: 3px;
+  --border-control: 1px solid var(--color-muted);
+  --focus-ring: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-focus);
+  --control-height: 2.25rem;
+  --inspector-width: 25rem;
+
+  /* Motion: only state feedback, removed under reduced motion */
+  --duration-state: 120ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-state: 0ms;
+  }
+}

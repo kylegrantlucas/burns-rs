@@ -1,0 +1,45 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+rust-version = "1.97"
+
+[workspace.dependencies]
+burns = { path = "crates/burns" }
+burns-depth = { path = "crates/burns-depth" }
+burns-media = { path = "crates/burns-media" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_path_to_error = "0.1"
+thiserror = "2"
+clap = { version = "4.6", features = ["derive"] }
+image = { version = "=0.25.10", default-features = false, features = ["png", "jpeg", "webp"] }
+png = "=0.18.1"
+wgpu = { version = "=30.0.1", default-features = false, features = ["std", "parking_lot", "dx12", "metal", "vulkan", "wgsl", "webgpu"] }
+bytemuck = { version = "1", features = ["derive"] }
+pollster = "0.4"
+eframe = { version = "=0.37.0", default-features = false, features = ["wgpu", "default_fonts", "persistence", "x11", "wayland"] }
+egui-wgpu = "=0.37.0"
+rfd = "0.17"
+wasm-bindgen = "=0.2.129"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = ["HtmlCanvasElement", "Window", "Document", "console"] }
+sha2 = "0.10"
+hex = "0.4"
+directories = "6"
+tempfile = "3"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+tokio = { version = "1", features = ["rt", "net", "time", "macros"] }
+ctrlc = "3"
+ort = { version = "=2.0.0-rc.14", default-features = false, features = ["std", "load-dynamic", "api-27"] }
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3

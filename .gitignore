@@ -1,0 +1,10 @@
+# Rust build outputs
+/target/
+
+# Nix development and build outputs
+/.direnv/
+/result
+/result-*
+
+# macOS
+.DS_Store
