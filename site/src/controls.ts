@@ -52,19 +52,27 @@ function labelFor(descriptor: SettingDescriptor, target: string): HTMLLabelEleme
 
 export class SettingsPanel {
   readonly #root: HTMLElement;
+  readonly #depthRoot: HTMLElement;
   readonly #host: ControlHost;
   readonly #lock: HTMLFieldSetElement;
+  readonly #depthLock: HTMLFieldSetElement;
+  readonly #expanded = new Map<string, boolean>();
+  readonly #enabledBadges = new Map<string, HTMLElement>();
 
-  constructor(root: HTMLElement, host: ControlHost) {
+  constructor(root: HTMLElement, depthRoot: HTMLElement, host: ControlHost) {
     this.#root = root;
+    this.#depthRoot = depthRoot;
     this.#host = host;
     this.#lock = create('fieldset', { className: 'settings-lock' });
+    this.#depthLock = create('fieldset', { className: 'settings-lock' });
     this.#root.replaceChildren(this.#lock);
+    this.#depthRoot.replaceChildren(this.#depthLock);
     this.rebuild();
   }
 
   set locked(locked: boolean) {
     this.#lock.disabled = locked;
+    this.#depthLock.disabled = locked;
   }
 
   /**
@@ -73,32 +81,57 @@ export class SettingsPanel {
    */
   rebuild(): void {
     const active = document.activeElement;
-    const focusId = active instanceof HTMLElement && this.#root.contains(active) ? active.id : '';
-    const sections = this.#host.engine.schema.groups.map((group) => this.#group(group));
-    this.#lock.replaceChildren(...sections);
+    const within = active instanceof HTMLElement && (this.#root.contains(active) || this.#depthRoot.contains(active));
+    const focusId = within ? active.id : '';
+    this.#enabledBadges.clear();
+    const motion: HTMLElement[] = [];
+    const depth: HTMLElement[] = [];
+    for (const group of this.#host.engine.schema.groups) {
+      (group.id === 'depth' ? depth : motion).push(this.#group(group));
+    }
+    this.#lock.replaceChildren(...motion);
+    this.#depthLock.replaceChildren(...depth);
     if (focusId) document.getElementById(focusId)?.focus();
   }
 
   #group(group: SettingGroup): HTMLElement {
     const headingId = `group-${group.id}`;
-    const section = create('section', { className: 'panel' });
+    const section = create('details', {
+      className: 'parameter-group',
+      open: this.#expanded.get(group.id) ?? (group.id === 'camera' || group.id === 'depth'),
+    });
     section.setAttribute('aria-labelledby', headingId);
-    section.append(
-      create('h2', { className: 'section-heading', id: headingId }, [group.label]),
-      create('p', { className: 'help group-help' }, [group.help]),
-    );
-    const engine = this.#host.engine;
-    for (const descriptor of group.settings) {
-      if (!engine.isVisible(descriptor)) continue;
-      section.append(this.#field(descriptor));
+    section.addEventListener('toggle', () => this.#expanded.set(group.id, section.open));
+    const summary = create('summary', {}, [
+      create('h3', { className: 'section-heading', id: headingId }, [group.label]),
+    ]);
+    const enabled = group.settings.find((setting) => setting.kind.type === 'bool' && setting.id.endsWith('.enabled'));
+    if (enabled) {
+      const badge = create('span', { className: 'group-state' });
+      this.#enabledBadges.set(enabled.id, badge);
+      this.#showEnabled(badge, this.#host.engine.getSetting(enabled.id));
+      summary.append(badge);
     }
+    const body = create('div', { className: 'parameter-body' }, [
+      create('p', { className: 'help group-help parameter-help' }, [group.help]),
+    ]);
+    for (const descriptor of group.settings) {
+      if (this.#host.engine.isVisible(descriptor)) body.append(this.#field(descriptor));
+    }
+    section.append(summary, body);
     return section;
+  }
+
+  #showEnabled(badge: HTMLElement, value: SettingValue): void {
+    if (value.type !== 'bool') return;
+    badge.textContent = value.value ? 'On' : 'Off';
+    badge.classList.toggle('is-on', value.value);
   }
 
   #field(descriptor: SettingDescriptor): HTMLElement {
     const id = descriptor.id;
-    const field = create('div', { className: 'field' });
-    const help = create('p', { className: 'help', id: elementId(id, '-help') }, [descriptor.help]);
+    const field = create('div', { className: 'field', title: descriptor.help });
+    const help = create('p', { className: 'help parameter-help', id: elementId(id, '-help') }, [descriptor.help]);
     const error = create('p', { className: 'error', id: elementId(id, '-error'), hidden: true });
     error.setAttribute('role', 'alert');
     const describedBy = `${help.id} ${error.id}`;
@@ -206,6 +239,8 @@ export class SettingsPanel {
     } else {
       row.show(engine.getSetting(id), live ? source : undefined);
     }
+    const badge = this.#enabledBadges.get(id);
+    if (badge) this.#showEnabled(badge, engine.getSetting(id));
     this.#host.settingChanged();
   }
 }

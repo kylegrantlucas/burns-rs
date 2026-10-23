@@ -49,6 +49,7 @@ const ui = {
   readoutFrame: $('#readout-frame'),
   readoutTime: $('#readout-time'),
   readoutFps: $('#readout-fps'),
+  timelineTicks: Array.from(document.querySelectorAll<HTMLElement>('[data-timeline-tick]')),
   viewRadios: Array.from(document.querySelectorAll<HTMLInputElement>('input[name="view"]')),
   exportMp4: $<HTMLButtonElement>('#export-mp4'),
   cancelExport: $<HTMLButtonElement>('#cancel-export'),
@@ -84,6 +85,7 @@ const ui = {
   applyPreset: $<HTMLButtonElement>('#apply-preset'),
   presetError: $('#preset-error'),
   settings: $('#settings'),
+  depthSettings: $('#depth-settings'),
   imageFile: $<HTMLInputElement>('#image-file'),
   depthFile: $<HTMLInputElement>('#depth-file'),
   projectFile: $<HTMLInputElement>('#project-file'),
@@ -94,6 +96,69 @@ function showMessage(element: HTMLElement, text: string): void {
   element.hidden = text === '';
 }
 
+/** Presentation-only navigation stays usable independently of GPU initialization. */
+function setupInspector(): void {
+  const inspector = $('.inspector');
+  const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>('.inspector-tabs [role="tab"]'));
+  const panels = tabs.map((tab) => $(`#${tab.getAttribute('aria-controls')}`));
+  const activate = (index: number, focus: boolean): void => {
+    tabs.forEach((tab, current) => {
+      const selected = current === index;
+      tab.setAttribute('aria-selected', String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+      panels[current].hidden = !selected;
+    });
+    $('.inspector-content').scrollTop = 0;
+    if (focus) tabs[index].focus();
+  };
+  tabs.forEach((tab, index) => tab.addEventListener('click', () => activate(index, false)));
+  $('.inspector-tabs').addEventListener('keydown', (event) => {
+    const index = tabs.indexOf(document.activeElement as HTMLButtonElement);
+    if (index < 0) return;
+    let next: number;
+    switch (event.key) {
+      case 'ArrowRight':
+        next = (index + 1) % tabs.length;
+        break;
+      case 'ArrowLeft':
+        next = (index + tabs.length - 1) % tabs.length;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = tabs.length - 1;
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    activate(next, true);
+  });
+  const guidance = $<HTMLButtonElement>('#toggle-guidance');
+  guidance.addEventListener('click', () => {
+    const show = guidance.getAttribute('aria-pressed') !== 'true';
+    guidance.setAttribute('aria-pressed', String(show));
+    guidance.textContent = show ? 'Hide help' : 'Show help';
+    inspector.dataset.guidance = String(show);
+  });
+  const menu = $<HTMLDetailsElement>('#project-menu');
+  menu.querySelectorAll('button').forEach((button) => {
+    button.addEventListener('click', () => { menu.open = false; });
+  });
+  document.addEventListener('click', (event) => {
+    if (!(event.target instanceof Node) || !menu.contains(event.target)) menu.open = false;
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !menu.open) return;
+    menu.open = false;
+    menu.querySelector('summary')?.focus();
+    event.preventDefault();
+  });
+}
+
+setupInspector();
+
 try {
   await loadWasm();
   start();
@@ -101,6 +166,7 @@ try {
   const message = `The burns engine failed to load: ${errorMessage(error)} Reload the page; if this persists, the build is incomplete.`;
   ui.gpuInfo.textContent = 'Engine unavailable';
   ui.gpuInfo.classList.add('is-error');
+  ui.stage.classList.add('is-unavailable');
   showMessage(ui.stageGpuError, message);
   ui.openImageStage.disabled = true;
   ui.openImage.disabled = true;
@@ -190,6 +256,8 @@ function start(): void {
 
   function updateStage(): void {
     const hasSource = engine.raw.hasSource();
+    ui.stage.classList.toggle('has-source', hasSource);
+    ui.stage.classList.toggle('is-unavailable', state.gpu === 'failed');
     ui.stageEmpty.hidden = hasSource;
     ui.canvas.hidden = !(hasSource && state.gpu === 'ready');
     showMessage(ui.stageGpuError, state.gpu === 'failed' ? gpuFailureText() : '');
@@ -285,6 +353,13 @@ function start(): void {
     ui.scrub.max = String(frames - 1);
     ui.scrub.value = String(state.frame);
     ui.scrub.setAttribute('aria-valuetext', `Frame ${state.frame} of ${frames - 1}`);
+    ui.scrub.style.setProperty('--scrub-progress', `${frames > 1 ? (state.frame / (frames - 1)) * 100 : 0}%`);
+    ui.timelineTicks.forEach((tick, index) => {
+      const last = ui.timelineTicks.length - 1;
+      tick.hidden = (frames < 5 && index > 0 && index < last) || (frames === 1 && index === last);
+      const label = String(Math.round(((frames - 1) * index) / last));
+      if (tick.textContent !== label) tick.textContent = label;
+    });
     ui.readoutFrame.textContent = `${state.frame} / ${frames - 1}`;
     ui.readoutTime.textContent = `${frameSeconds(project, state.frame).toFixed(3)} s / ${durationSeconds(project).toFixed(3)} s`;
     ui.readoutFps.textContent = `${fps.num}/${fps.den} fps`;
@@ -754,7 +829,7 @@ function start(): void {
       return;
     }
     projectReplaced();
-    exportDone(`Imported ${file.name}: output, timing, seed, depth inversion and motion restored.`);
+    exportDone(`Opened ${file.name}: output, timing, seed, depth inversion and motion restored.`);
   }
 
   function applyPreset(): void {
@@ -773,7 +848,7 @@ function start(): void {
 
   // ------------------------------------------------------------- panels
 
-  const settings = new SettingsPanel(ui.settings, {
+  const settings = new SettingsPanel(ui.settings, ui.depthSettings, {
     engine,
     settingChanged: () => {
       render();

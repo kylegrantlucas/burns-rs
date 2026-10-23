@@ -222,6 +222,10 @@ copy the pinned ONNX CPU runtime assets to the same-origin `public/ort` path.
 There is no backend, account, upload endpoint, service worker, or deployment step.
 Serve production files over HTTPS or localhost for WebGPU.
 
+The generated `site/src/wasm/burns_bg.wasm` is intentionally untracked.
+`just wasm` recreates it; `just site` and `just site-serve` run that step for you.
+Run `just wasm` before invoking the site's Vite scripts directly.
+
 The workbench supports the same project/preset/stack, source/depth inspection,
 rational timing, transport, and PNG/depth/project workflows. Rust owns image
 decoding, project validation, defaults/descriptors, preprocessing, motion, and
@@ -229,6 +233,15 @@ rendering; TypeScript manages the DOM, playback, worker, and encoder lifecycle.
 The public WASM interface is in `site/src/wasm/burns.d.ts`. `new BurnsEngine()`
 creates a usable pure project before fallible `initCanvas`; getters remain
 available during capture, while conflicting mutations report busy.
+
+The slate editing bay keeps the image on a true-black matte. Use the inspector's
+Motion, Depth, and Output tabs to move between parameter editing, map generation/
+import, and dimensions/timing. Camera, shake, warp, and project groups fold
+independently; Show help reveals their parameter guidance without changing any
+settings. Arrow keys, Home, and End navigate the inspector tabs. The Project
+menu opens/saves portable JSON, while frame PNG and MP4 actions stay beside the
+transport, including on narrow screens. The amber ruler labels actual frame
+indices from the Rust timeline; it is not a realtime recording indicator.
 
 Generate is the only action that permits downloading the pinned public model.
 A dedicated CPU worker verifies its SHA-256 and uses the shared Rust preparation
