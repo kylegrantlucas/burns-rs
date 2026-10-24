@@ -2,6 +2,7 @@
   <img src="site/public/favicon.svg" width="56" alt="" />
   <h1>burns</h1>
   <p>Make a still move.</p>
+  <p><a href="https://kylegrantlucas.github.io/burns-rs/">Open the workbench</a></p>
 </div>
 
 <p align="center">
@@ -29,7 +30,7 @@ move in the browser, desktop app, or command line.
 
 ![The burns workbench with camera controls and Hokusai's The Great Wave](docs/media/workbench.webp)
 
-## Get started
+## Run it locally
 
 [Nix](https://nixos.org/download/) provides the build tools and media dependencies:
 

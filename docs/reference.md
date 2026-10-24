@@ -212,6 +212,9 @@ joins owned jobs; an already-running ONNX call must finish before shutdown.
 
 ## Browser workbench
 
+[Open the hosted workbench](https://kylegrantlucas.github.io/burns-rs/) in a
+WebGPU-capable browser.
+
 On a fresh checkout, run `pnpm --dir site install --frozen-lockfile` inside
 `nix develop` before starting the browser workbench.
 
@@ -224,8 +227,12 @@ just site
 `just site` regenerates matching WASM bindings, installs with the frozen pnpm
 lockfile, and builds the static `site/dist` output. Development and build scripts
 copy the pinned ONNX CPU runtime assets to the same-origin `public/ort` path.
-There is no backend, account, upload endpoint, service worker, or deployment step.
+There is no backend, account, upload endpoint, or service worker.
 Serve production files over HTTPS or localhost for WebGPU.
+
+`.github/workflows/pages.yml` builds pull requests and deploys `main` to GitHub
+Pages. It runs `just site /burns-rs/` so generated asset and worker URLs include
+the repository path. The default `just site` build still serves from `/`.
 
 The generated `site/src/wasm/burns_bg.wasm` is intentionally untracked.
 `just wasm` recreates it; `just site` and `just site-serve` run that step for you.

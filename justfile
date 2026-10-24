@@ -18,9 +18,9 @@ wasm:
     cargo build --release -p burns-wasm --target wasm32-unknown-unknown
     wasm-bindgen --target web --out-dir site/src/wasm --out-name burns target/wasm32-unknown-unknown/release/burns_wasm.wasm
 
-site: wasm
+site BASE="/": wasm
     pnpm --dir site install --frozen-lockfile
-    pnpm --dir site build
+    pnpm --dir site build --base "$1"
 
 site-serve PORT="8472": wasm
     pnpm --dir site dev --host 127.0.0.1 --port "$1" --strictPort
