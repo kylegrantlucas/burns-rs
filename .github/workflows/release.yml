@@ -105,6 +105,13 @@ jobs:
           cp "$ort/LICENSE" "$ort/ThirdPartyNotices.txt" "$ort/VERSION_NUMBER" "$ort/GIT_COMMIT_ID" \
             "$stage/licenses/onnxruntime/"
 
+          # Prove the staged Linux runtime loads and can perform depth inference.
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            env -u ORT_DYLIB_PATH "$stage/burns" depth \
+              -i "$stage/docs/media/great-wave.jpg" \
+              -o "$RUNNER_TEMP/burns-depth-smoke.png"
+          fi
+
           tar -C dist -czf "dist/$name.tar.gz" "$name"
 
       - uses: actions/upload-artifact@v7

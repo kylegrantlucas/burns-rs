@@ -277,6 +277,34 @@ Missing WebGPU disables preview and browser capture without displaying a fake
 renderer; pure settings/project/CLI controls still work. Browser quality and
 codec limits are distinct from native x264 CRF.
 
+## Tagged releases
+
+`.github/workflows/release.yml` publishes a GitHub Release when a pushed `v*`
+tag exactly matches `v` plus the workspace version in `Cargo.toml`. For example,
+version `0.1.0` requires tag `v0.1.0`. Every platform build must succeed before
+the release is published.
+
+The workflow builds Linux x86-64, Linux ARM64, and Apple Silicon macOS archives.
+Each contains `burns`, `burns-gui`, presets, the README and reference material,
+project licenses, and the notices for the fonts embedded in the desktop app.
+Tagged releases include `SHA256SUMS` and generated release notes.
+
+The archives bundle the CPU ONNX Runtime library under `runtime/lib/`, with its
+license and third-party notices under `licenses/onnxruntime/`. Depth generation
+uses that sibling runtime unless `ORT_DYLIB_PATH` selects another library.
+Model weights are not bundled; they download and verify on the first explicit
+depth generation. 2D motion and imported depth maps do not need ONNX Runtime.
+
+FFmpeg is not bundled. MP4 export needs `ffmpeg` with `libx264` on `PATH`.
+macOS binaries are not Developer ID signed or notarized.
+The bundled depth runtime requires macOS 14 or newer.
+
+To build downloadable workflow artifacts without creating a tag or release:
+
+```sh
+gh workflow run release.yml --ref main
+```
+
 ## Checks
 
 ```sh
@@ -335,4 +363,6 @@ links in the workbench. The separately downloaded model uses Apache-2.0; its
 pinned source/license links are shown before generation. Keep those notices and
 upstream source links when redistributing the corresponding third-party assets.
 
-[Showing lines 1-324 of 325. Use :325 to continue]
+Native release archives retain the embedded egui font notices under
+`licenses/egui-fonts`, copied from the exact `epaint_default_fonts` dependency
+used by the build.
