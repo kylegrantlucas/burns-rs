@@ -1,0 +1,109 @@
+name: Release
+
+# A manual run builds and uploads the archives as workflow artifacts without
+# publishing a release.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: build ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # 22.04 keeps the glibc requirement low enough for older distros.
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-22.04
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-22.04-arm
+          - target: aarch64-apple-darwin
+            runner: macos-15
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check tag matches the workspace version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n1)
+          if [ -z "$version" ] || [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match Cargo.toml version ${version:-<missing>}"
+            exit 1
+          fi
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.97.0
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Build
+        run: cargo build --release --locked --target ${{ matrix.target }} -p burns-cli -p burns-gui
+
+      - name: Smoke native CLI (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          target/${{ matrix.target }}/release/burns --version
+          target/${{ matrix.target }}/release/burns presets
+
+      - name: Package
+        shell: bash
+        run: |
+          # Branch names may contain slashes on manual runs.
+          name="burns-${GITHUB_REF_NAME//\//-}-${{ matrix.target }}"
+          stage="dist/$name"
+          mkdir -p "$stage/site/public"
+          cp target/${{ matrix.target }}/release/burns target/${{ matrix.target }}/release/burns-gui "$stage/"
+          cp -R presets docs README.md LICENSE-MIT LICENSE-APACHE "$stage/"
+          # The README header image.
+          cp site/public/favicon.svg "$stage/site/public/"
+
+          # Ship the notices for the fonts embedded in burns-gui.
+          font_dir=$(cargo metadata --locked --format-version 1 --filter-platform "${{ matrix.target }}" \
+            | python3 -c 'import json, pathlib, sys; p = next(p for p in json.load(sys.stdin)["packages"] if p["name"] == "epaint_default_fonts"); print(pathlib.Path(p["manifest_path"]).parent / "fonts")')
+          mkdir -p "$stage/licenses/egui-fonts"
+          cp "$font_dir"/*.txt "$stage/licenses/egui-fonts/"
+
+          tar -C dist -czf "dist/$name.tar.gz" "$name"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.target }}
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum -- *.tar.gz > SHA256SUMS
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            --verify-tag
