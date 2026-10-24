@@ -12,6 +12,9 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  # The ONNX Runtime CPU release bundled under runtime/lib/ for depth generation;
+  # the same version the project shell supplies.
+  ORT_VERSION: 1.27.1
 
 jobs:
   build:
@@ -23,10 +26,19 @@ jobs:
           # 22.04 keeps the glibc requirement low enough for older distros.
           - target: x86_64-unknown-linux-gnu
             runner: ubuntu-22.04
+            ort: linux-x64
+            ort_sha256: 25b1ef1fea1acd210d63f8f24dc870ad6e077795ce1f54876252c6d3803c15af
+            ort_lib: libonnxruntime.so
           - target: aarch64-unknown-linux-gnu
             runner: ubuntu-22.04-arm
+            ort: linux-aarch64
+            ort_sha256: 33c67e33d1e25b816878366ea276589a024f71f000e7ff955c4b33224d639edd
+            ort_lib: libonnxruntime.so
           - target: aarch64-apple-darwin
             runner: macos-15
+            ort: osx-arm64
+            ort_sha256: e42b77a7281cc6e55141bf44fcfbac2c782b823a491bbb6ac33c781dd991f8a6
+            ort_lib: libonnxruntime.dylib
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
@@ -40,6 +52,16 @@ jobs:
             echo "::error::tag $GITHUB_REF_NAME does not match Cargo.toml version ${version:-<missing>}"
             exit 1
           fi
+
+      - name: Fetch ONNX Runtime
+        shell: bash
+        run: |
+          archive="onnxruntime-${{ matrix.ort }}-$ORT_VERSION.tgz"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/$archive" \
+            "https://github.com/microsoft/onnxruntime/releases/download/v$ORT_VERSION/$archive"
+          (cd "$RUNNER_TEMP" && echo "${{ matrix.ort_sha256 }}  $archive" | shasum -a 256 -c -)
+          mkdir -p "$RUNNER_TEMP/onnxruntime"
+          tar -xzf "$RUNNER_TEMP/$archive" --strip-components 1 -C "$RUNNER_TEMP/onnxruntime"
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -75,6 +97,13 @@ jobs:
             | python3 -c 'import json, pathlib, sys; p = next(p for p in json.load(sys.stdin)["packages"] if p["name"] == "epaint_default_fonts"); print(pathlib.Path(p["manifest_path"]).parent / "fonts")')
           mkdir -p "$stage/licenses/egui-fonts"
           cp "$font_dir"/*.txt "$stage/licenses/egui-fonts/"
+
+          # burns-depth loads the runtime from runtime/lib/ beside the executables.
+          ort="$RUNNER_TEMP/onnxruntime"
+          mkdir -p "$stage/runtime/lib" "$stage/licenses/onnxruntime"
+          cp -L "$ort/lib/${{ matrix.ort_lib }}" "$stage/runtime/lib/"
+          cp "$ort/LICENSE" "$ort/ThirdPartyNotices.txt" "$ort/VERSION_NUMBER" "$ort/GIT_COMMIT_ID" \
+            "$stage/licenses/onnxruntime/"
 
           tar -C dist -czf "dist/$name.tar.gz" "$name"
 
