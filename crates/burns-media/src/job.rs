@@ -1,4 +1,4 @@
-//! Background MP4 export through FFmpeg.
+//! Background video export through FFmpeg.
 
 use std::any::Any;
 use std::io::{self, Write};
@@ -14,7 +14,7 @@ use burns::{DepthMap, GpuContext, MotionProject, RenderView, Renderer, Size, Sou
 use tempfile::NamedTempFile;
 
 use crate::MediaError;
-use crate::encoder::{self, Encoder};
+use crate::encoder::{self, Codec, Encoder};
 use crate::output::Destination;
 use crate::prepare::{check_inputs, renderer};
 
@@ -31,7 +31,7 @@ const PHASE_RUNNING: u8 = 0;
 const PHASE_CANCELLED: u8 = 1;
 const PHASE_PUBLISHING: u8 = 2;
 
-/// Everything one MP4 export needs. Encoder settings stay here, out of the portable project.
+/// Everything one video export needs. Encoder settings stay here, out of the portable project.
 #[derive(Debug, Clone)]
 pub struct RenderRequest {
     pub project: MotionProject,
@@ -39,7 +39,10 @@ pub struct RenderRequest {
     /// Required by the depth camera; ignored by every other camera.
     pub depth: Option<Arc<DepthMap>>,
     pub output: PathBuf,
+    /// Video codec and container; [`Codec::H264`] writes MP4, [`Codec::Ffv1`] Matroska.
+    pub codec: Codec,
     /// x264 constant rate factor, `0..=MAX_CRF`; [`DEFAULT_CRF`] unless the user adjusts it.
+    /// Ignored by [`Codec::Ffv1`], which is lossless.
     pub crf: u8,
     /// Replace an existing file or symlink entry at `output` once the export succeeds.
     pub overwrite: bool,
@@ -51,7 +54,7 @@ pub enum RenderStatus {
     /// `completed` of `total` frames have been handed to the encoder. A cancelled job stays
     /// `Running` until its encoder is stopped and its temporary file is removed.
     Running { completed: u32, total: u32 },
-    /// The finished MP4 has been published at `output`.
+    /// The finished video has been published at `output`.
     Done { output: PathBuf },
     /// The export failed; any previous file at the output path is unchanged.
     Failed { message: String },
@@ -66,7 +69,7 @@ impl RenderStatus {
     }
 }
 
-/// An MP4 export running on its own worker thread.
+/// A video export running on its own worker thread.
 ///
 /// [`RenderJob::start`] preflights everything before any frame is rendered. Dropping the job
 /// cancels it, kills its FFmpeg child, and joins the worker; use [`RenderJob::wait`] to block
@@ -121,8 +124,8 @@ impl RenderJob {
     ///
     /// Before any frame is produced this checks the CRF, the project (including frame count,
     /// frame rate, and temporal limits), even output dimensions, the depth map the depth camera
-    /// needs, the output path, FFmpeg with libx264, and the GPU limits of the 2x supersampled
-    /// final render; the source and depth are uploaded once here.
+    /// needs, the output path, FFmpeg with the codec's encoder, and the GPU limits of the 2x
+    /// supersampled final render; the source and depth are uploaded once here.
     pub fn start(context: GpuContext, request: RenderRequest) -> Result<Self, MediaError> {
         Self::start_with(&Encoder::system(), context, request)
     }
@@ -137,6 +140,7 @@ impl RenderJob {
             image,
             depth,
             output,
+            codec,
             crf,
             overwrite,
         } = request;
@@ -149,11 +153,11 @@ impl RenderJob {
             return Err(MediaError::OddDimensions { width, height });
         }
         let destination = Destination::check(&output, overwrite)?;
-        encoder.probe()?;
+        encoder.probe(codec)?;
         let renderer = renderer(context, &project, &image, depth)?;
 
         let temp = destination.temp_file()?;
-        let mut child = encoder.spawn(project.output, project.timeline, crf, temp.path())?;
+        let mut child = encoder.spawn(project.output, project.timeline, codec, crf, temp.path())?;
         let stdin = child.stdin.take().expect("stdin is piped");
         let stderr = child.stderr.take().expect("stderr is piped");
         let total = project.timeline.frames;
@@ -484,6 +488,7 @@ mod tests {
             image: Arc::new(SourceImage::from_rgba8(Size::new(64, 36), pixels).unwrap()),
             depth: None,
             output,
+            codec: Codec::H264,
             crf: DEFAULT_CRF,
             overwrite,
         }
@@ -543,6 +548,38 @@ mod tests {
         };
         assert!(reason.contains("libx264"), "{reason}");
         assert!(entries(out.path()).is_empty());
+    }
+
+    const LISTS_ONLY_X264: &str =
+        r#"echo "Encoders:"; echo " V....D libx264              libx264 H.264 / AVC"; exit 0"#;
+
+    #[test]
+    fn ffv1_probe_refuses_an_encoder_listing_only_libx264() {
+        let bin = tempfile::tempdir().unwrap();
+        let error = Encoder::at(script(bin.path(), LISTS_ONLY_X264))
+            .probe(Codec::Ffv1)
+            .unwrap_err();
+        let MediaError::EncoderUnavailable { reason, .. } = &error else {
+            panic!("expected EncoderUnavailable, got {error}");
+        };
+        assert!(
+            reason.contains("this FFmpeg build has no ffv1 encoder"),
+            "{reason}"
+        );
+        Encoder::at(script(bin.path(), LISTS_ONLY_X264))
+            .probe(Codec::H264)
+            .unwrap();
+    }
+
+    #[test]
+    fn ffv1_probe_accepts_an_encoder_listing_ffv1() {
+        let bin = tempfile::tempdir().unwrap();
+        Encoder::at(script(
+            bin.path(),
+            r#"echo "Encoders:"; echo " V....D ffv1                 FFmpeg video codec #1"; exit 0"#,
+        ))
+        .probe(Codec::Ffv1)
+        .unwrap();
     }
 
     #[test]

@@ -13,6 +13,9 @@ use clap::Parser;
 
 fn main() -> ExitCode {
     let cli = cli::Cli::parse();
+    if let Err(error) = cli.check() {
+        error.exit();
+    }
     match commands::run(cli) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {

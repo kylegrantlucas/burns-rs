@@ -77,7 +77,7 @@ pub enum MediaError {
     /// A single-frame or depth-map export was cancelled before publication.
     #[error("media export cancelled before output publication")]
     Cancelled,
-    /// FFmpeg is missing, cannot run, or lacks the libx264 encoder.
+    /// FFmpeg is missing, cannot run, or lacks the requested codec's encoder.
     #[error("the FFmpeg encoder `{}` is unavailable: {reason}", program.display())]
     EncoderUnavailable { program: PathBuf, reason: String },
     /// FFmpeg stopped accepting frames or exited unsuccessfully.

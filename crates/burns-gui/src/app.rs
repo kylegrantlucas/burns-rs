@@ -12,7 +12,7 @@ use burns::{
     SourceImage, Timeline, presets, setting_groups,
 };
 use burns_depth::DepthProgress;
-use burns_media::{DEFAULT_CRF, MAX_CRF, MediaError, RenderRequest};
+use burns_media::{Codec, DEFAULT_CRF, MAX_CRF, MediaError, RenderRequest};
 use eframe::egui::{
     self, Align, Align2, Color32, CornerRadius, DragValue, FontId, Key, Layout, Margin, Modifiers,
     Pos2, Rect, RichText, Stroke, TextEdit, UiBuilder, Vec2,
@@ -802,6 +802,7 @@ impl Workbench {
             image: Arc::clone(&source.image),
             depth: self.depth.as_ref().map(|depth| Arc::clone(&depth.map)),
             output,
+            codec: Codec::H264,
             crf: self.crf,
             overwrite: self.overwrite,
         };

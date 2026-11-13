@@ -20,10 +20,16 @@ hex.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 ort = { workspace = true, optional = true }
-reqwest = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true }
 directories = { workspace = true, optional = true }
 tempfile = { workspace = true, optional = true }
+
+# Security.framework TLS (the OS's crypto) on Apple targets; rustls everywhere else.
+[target.'cfg(target_vendor = "apple")'.dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["native-tls"], optional = true }
+
+[target.'cfg(all(not(target_arch = "wasm32"), not(target_vendor = "apple")))'.dependencies]
+reqwest = { workspace = true, optional = true }
 
 [dev-dependencies]
 serde_json.workspace = true

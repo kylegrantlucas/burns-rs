@@ -14,7 +14,8 @@ use std::time::{Duration, Instant};
 
 use burns::{DepthMap, FrameRate, GpuContext, MotionProject, Size, SourceImage, Timeline, preset};
 use burns_media::{
-    DEFAULT_CRF, FrameRequest, MediaError, RenderJob, RenderRequest, RenderStatus, save_frame,
+    Codec, DEFAULT_CRF, FrameRequest, MediaError, RenderJob, RenderRequest, RenderStatus,
+    save_frame,
 };
 
 static CONTEXT: LazyLock<GpuContext> = LazyLock::new(|| {
@@ -54,6 +55,7 @@ fn request(project: MotionProject, output: PathBuf, overwrite: bool) -> RenderRe
         image: Arc::new(bright_grid(Size::new(640, 360))),
         depth: None,
         output,
+        codec: Codec::H264,
         crf: DEFAULT_CRF,
         overwrite,
     }
@@ -459,6 +461,7 @@ fn imported_depth_grids_use_the_full_uv_extent_at_any_resolution() {
             image,
             depth: Some(square),
             output: output.clone(),
+            codec: Codec::H264,
             crf: DEFAULT_CRF,
             overwrite: false,
         },

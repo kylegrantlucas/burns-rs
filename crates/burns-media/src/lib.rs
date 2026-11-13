@@ -5,8 +5,9 @@
 //!   existing entries (including dangling symlinks) are refused unless `overwrite` is set, a
 //!   destination created during the write is never clobbered, and failures leave no partial file.
 //! * [`save_frame`] renders one final-quality motion frame and streams it to PNG.
-//! * [`RenderJob`] exports a project to H.264 MP4 through an `ffmpeg` child process on its own
-//!   worker thread, with progress, cancellation, and the same publishing guarantees.
+//! * [`RenderJob`] exports a project to H.264 MP4 or lossless FFV1 Matroska ([`Codec`]) through
+//!   an `ffmpeg` child process on its own worker thread, with progress, cancellation, and the
+//!   same publishing guarantees.
 //!
 //! Encoder settings live in [`RenderRequest`], never in the portable project.
 
@@ -19,6 +20,7 @@ mod output;
 mod prepare;
 
 pub use assets::{load_depth, load_image, write_depth_png};
+pub use encoder::Codec;
 pub use error::MediaError;
 pub use frame::{FrameRequest, save_frame};
 pub use job::{DEFAULT_CRF, MAX_CRF, RenderJob, RenderRequest, RenderStatus};

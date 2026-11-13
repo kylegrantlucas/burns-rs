@@ -15,8 +15,8 @@ use burns::{
 };
 use burns_depth::DepthService;
 use burns_media::{
-    FrameRequest, MediaError, RenderJob, RenderRequest, RenderStatus, load_depth, load_image,
-    save_frame, write_depth_png,
+    Codec, FrameRequest, MediaError, RenderJob, RenderRequest, RenderStatus, load_depth,
+    load_image, save_frame, write_depth_png,
 };
 
 use crate::cli::{Cli, Command, DepthArgs, DepthSource, FrameArgs, ProjectArgs, RenderArgs};
@@ -195,12 +195,19 @@ fn render(args: RenderArgs) -> Result<(), CliError> {
     interrupt::check(interrupted)?;
     let context = gpu()?;
     interrupt::check(interrupted)?;
-    let summary = format!(
-        "rendering {} to `{}` (CRF {})",
-        describe(&project),
-        args.output.display(),
-        args.crf
-    );
+    let summary = match args.codec {
+        Codec::H264 => format!(
+            "rendering {} to `{}` (CRF {})",
+            describe(&project),
+            args.output.display(),
+            args.crf
+        ),
+        Codec::Ffv1 => format!(
+            "rendering {} to `{}` (FFV1)",
+            describe(&project),
+            args.output.display()
+        ),
+    };
     let job = RenderJob::start(
         context,
         RenderRequest {
@@ -208,6 +215,7 @@ fn render(args: RenderArgs) -> Result<(), CliError> {
             image,
             depth,
             output: args.output,
+            codec: args.codec,
             crf: args.crf,
             overwrite: args.overwrite,
         },

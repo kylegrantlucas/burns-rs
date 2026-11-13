@@ -3,8 +3,10 @@
 use std::path::PathBuf;
 
 use burns::FrameRate;
-use burns_media::{DEFAULT_CRF, MAX_CRF};
-use clap::{Args, Parser, Subcommand};
+use burns_media::{Codec, DEFAULT_CRF, MAX_CRF};
+use clap::builder::{PossibleValuesParser, TypedValueParser};
+use clap::error::ErrorKind;
+use clap::{Args, CommandFactory, Parser, Subcommand};
 
 use crate::project::{Assignment, Overrides, parse_fps};
 
@@ -14,6 +16,25 @@ use crate::project::{Assignment, Overrides, parse_fps};
 pub struct Cli {
     #[command(subcommand)]
     pub command: Command,
+}
+
+impl Cli {
+    /// Cross-argument rules clap cannot express; a violation is a usage error.
+    pub fn check(&self) -> Result<(), clap::Error> {
+        if let Command::Render(args) = &self.command
+            && args.codec == Codec::Ffv1
+            && !args
+                .output
+                .extension()
+                .is_some_and(|extension| extension.eq_ignore_ascii_case("mkv"))
+        {
+            return Err(Self::command().error(
+                ErrorKind::ValueValidation,
+                "--codec ffv1 writes Matroska; use a .mkv output",
+            ));
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Subcommand)]
@@ -31,7 +52,7 @@ pub enum Command {
         /// Preset name, as listed by `burns presets`.
         name: String,
     },
-    /// Render an H.264 MP4 clip with FFmpeg.
+    /// Render an H.264 MP4 or lossless FFV1 Matroska clip with FFmpeg.
     Render(RenderArgs),
     /// Render one final-quality frame as an RGBA PNG.
     Frame(FrameArgs),
@@ -48,13 +69,20 @@ pub struct RenderArgs {
     /// Source image (PNG, JPEG, or WebP).
     #[arg(short = 'i', long = "input", value_name = "IMAGE")]
     pub input: PathBuf,
-    /// Output MP4 path.
-    #[arg(short = 'o', long = "output", value_name = "CLIP.mp4")]
+    /// Output path: MP4 for h264, `.mkv` for ffv1.
+    #[arg(short = 'o', long = "output", value_name = "CLIP.mp4|CLIP.mkv")]
     pub output: PathBuf,
     #[command(flatten)]
     pub project: ProjectArgs,
     #[command(flatten)]
     pub depth: DepthSource,
+    /// Video codec: h264 (libx264 MP4) or ffv1 (lossless Matroska; ignores --crf).
+    #[arg(long, value_name = "CODEC", default_value = "h264",
+          value_parser = PossibleValuesParser::new(["h264", "ffv1"]).map(|codec| match codec.as_str() {
+              "ffv1" => Codec::Ffv1,
+              _ => Codec::H264,
+          }))]
+    pub codec: Codec,
     /// H.264 constant rate factor (lower is higher quality).
     #[arg(long, value_name = "0..51", default_value_t = DEFAULT_CRF,
           value_parser = clap::value_parser!(u8).range(0..=i64::from(MAX_CRF)))]

@@ -154,7 +154,7 @@ inspection remains available.
 ## Native media and export jobs
 
 `burns-media` provides still/depth loading, safe output writing, final-quality
-motion PNG capture, and the shared `RenderJob` used for native MP4 export.
+motion PNG capture, and the shared `RenderJob` used for native video export.
 `RenderRequest` snapshots the project and retains image/map assets through `Arc`;
 preview playback speed and dropped preview frames never affect the offline
 `0..N` frame loop.
@@ -164,6 +164,11 @@ MP4 export requires FFmpeg with libx264, even dimensions, and CRF 0–51 (defaul
 audio, `medium` preset, faststart, and explicit TV-range BT.709 matrix/primaries/
 transfer tags. FFmpeg 9 also needs frame-level `setparams` tags so filters do not
 replace output primaries/transfer with “unknown.”
+
+`Codec::Ffv1` (CLI `--codec ffv1`) instead writes lossless FFV1 level 3 in
+Matroska: FFmpeg needs the `ffv1` encoder, every frame is a keyframe, 4 slices
+carry CRCs, and CRF is ignored. The pixel format, colour tags, and frame count
+match H.264. The CLI requires a `.mkv` output for FFV1.
 
 Mapped GPU rows go directly to the encoder pipe; useful bytes are streamed
 without GPU padding, an extra full-frame pixel buffer, or an unbounded queue.
@@ -295,7 +300,8 @@ uses that sibling runtime unless `ORT_DYLIB_PATH` selects another library.
 Model weights are not bundled; they download and verify on the first explicit
 depth generation. 2D motion and imported depth maps do not need ONNX Runtime.
 
-FFmpeg is not bundled. MP4 export needs `ffmpeg` with `libx264` on `PATH`.
+FFmpeg is not bundled. MP4 export needs `ffmpeg` with `libx264` on `PATH`; FFV1
+export needs `ffmpeg` with `ffv1`.
 macOS binaries are not Developer ID signed or notarized.
 The bundled depth runtime requires macOS 14 or newer.
 
